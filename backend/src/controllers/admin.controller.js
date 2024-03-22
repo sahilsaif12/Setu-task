@@ -12,7 +12,7 @@ const createOrLoginAdmin = async (req, res) => {
     const { username, password } = req.body
 
     if ([username, password].some(field => field.trim() === "")) {
-        res.status(400)
+        return res.status(400)
             .json(
                 new ApiResponse(400, "all fields are required")
             )
@@ -22,33 +22,21 @@ const createOrLoginAdmin = async (req, res) => {
 
     if (admin) {
         const isPasswordValid =await admin.isPasswordCorrect(password)
-        if (!isPasswordValid) {
-            res.status(401)
+        if (isPasswordValid) {
+            const accessToken =await admin.generateAccessToken()
+             return res.status(200)
+                .cookie("accessToken", accessToken,options)
                 .json(
-                    new ApiResponse(401, "incorrect password")
+                    new ApiResponse(200, "User logged in", { accessToken })
                 )
         }
         
+        
     } 
-    else {
-        admin = await Admin.create({
-            username,
-            password
-        })
 
-        if (!admin) {
-            res.status(500)
-                .json(
-                    new ApiResponse(500, "server problem while creating admin")
-                )
-        }
-    }
-    
-    const accessToken =await admin.generateAccessToken()
-    res.status(200)
-        .cookie("accessToken", accessToken,options)
+    res.status(401)
         .json(
-            new ApiResponse(200, "User logged in", { accessToken })
+            new ApiResponse(401, "not authorized")
         )
 }
 
@@ -66,7 +54,6 @@ const refreshToken=async(req,res)=>{
             }
         } else {
             userId = decoded?._id
-
         }
     })
 
@@ -88,7 +75,17 @@ const refreshToken=async(req,res)=>{
         )
 
 }
+
+const logout=async(req, res) =>{
+
+    res.status(200)
+        .clearCookie("accessToken", options)
+        .json(
+            new ApiResponse(200,"user logged out successfully")
+        )
+}
 export {
     createOrLoginAdmin,
-    refreshToken
+    refreshToken,
+    logout
 }
